@@ -1,3 +1,8 @@
 *.zip
 Fastory-line CADS/
 New Fastory-line CADS/
+env/
+3-7-2017_12.json
+ca_certificate.pem
+test.ipynb
+test.py

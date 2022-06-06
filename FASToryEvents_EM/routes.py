@@ -38,9 +38,9 @@ def handle_subscribe(client, userdata, mid, granted_qos):
     print('[X-Routes] Subscription id {} granted with qos {}.'
           .format(mid, granted_qos))   
 
-# @mqtt.unsubscribe()
-# def handle_unsubscribe(client, userdata, mid):
-#     print('Unsubscribed from topic (id: {})'.format(mid))
+@mqtt.unsubscribe()
+def handle_unsubscribe(client, userdata, mid):
+    print('Unsubscribed from topic (id: {})'.format(mid))
 
 @mqtt.on_disconnect()
 def handle_disconnect():

@@ -75,5 +75,5 @@ class FASToryEvents(db.Model):
     def __repr__(self):
         return f"Workstation('{self.WorkCellID}'s Events')"
 
-# from FASToryEM.dbModels import WorkstationInfo as W
-# from FASToryEM.dbModels import EnergyMeasurements as E
+from FASToryEM.dbModels import WorkstationInfo as W
+from FASToryEM.dbModels import EnergyMeasurements as E

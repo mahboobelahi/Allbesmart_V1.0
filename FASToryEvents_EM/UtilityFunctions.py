@@ -63,7 +63,7 @@ def simulateData(externalId,measurements,payload,
                                                 params=payload,headers=headers,
                                                 json={"SimEvent": event[i].get("event")})
                     #checking for token lifetime
-                    print(f'[X-SD-E] ({req_A.status_code},{req_V.status_code},{req_P.status_code},{req_event.status_code},{i})')
+                    print(f'[X-RS] ({req_A.status_code},{req_V.status_code},{req_P.status_code},{req_event.status_code},{i})')
 
                     time.sleep(1)
         except requests.exceptions.RequestException as err:
@@ -71,7 +71,7 @@ def simulateData(externalId,measurements,payload,
         except OSError:
                 print("[X-E] Could not open/read file: 3-7-2017_12.json")
         except ValueError as err:  # includes simplejson.decoder.JSONDecodeError
-                print('[X-SD-E]Decoding JSON has failed',err)        
+                print('[X-E]Decoding JSON has failed',err)        
         print('[X-UT] Recursion....')
         simulateData(externalId,measurements,payload,
                         access_token_time,expire_time,headers)

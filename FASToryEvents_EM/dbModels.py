@@ -75,3 +75,19 @@ class FASToryEvents(db.Model):
     
     def __repr__(self):
         return f"('Events:{self.SenderID}')"
+    
+    def dump_datetime(self,value):
+        """Deserialize datetime object into string form for JSON processing."""
+        if value is None:
+            return None
+        return [value.strftime("%Y-%m-%d"), value.strftime("%H:%M:%S")]
+    @property
+    def serialize(self):
+       """Return object data in easily serializable format"""
+       return {
+           
+           'SenderID': self.SenderID,
+           # This is an example how to deal with Many2Many relations
+           'Events'  : self.Events,
+           'timestamp' : self.dump_datetime(self.timestamp)
+       }

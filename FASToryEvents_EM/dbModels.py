@@ -18,8 +18,9 @@ class WorkstationInfo(db.Model):
     CNV_service_url = db.Column(db.String(255), unique=True, nullable=False)
     EM_child= db.relationship('EnergyMeasurements',backref='WorkstationInfo',lazy=True)#,uselist=False
     DM_child= db.relationship('MeasurementsForDemo',backref='WorkstationInfo',lazy=True)#,uselist=False
+    LineEvents= db.relationship('FASToryEvents',backref='RT_Events',lazy=True)#,uselist=False
     def __repr__(self):
-        return f"Workstation('{self.ID}', '{self.DAQ_ExternalID}')"
+        return f"Workstation('{self.DAQ_ExternalID}')"
 
 # only for PR
 class EnergyMeasurements(db.Model):
@@ -43,7 +44,7 @@ class EnergyMeasurements(db.Model):
     Fkey = db.Column(db.Integer, db.ForeignKey('workstationinfo.id'),nullable=False)
     #DAQ_ExID = db.Column(db.String(10), db.ForeignKey('WorkstationInfo.DAQ_ExternalID'),nullable=False)
     def __repr__(self):
-        return f"Workstation('{self.WorkCellID}', '{self.Power}', '{self.Load}', '{self.info}')"
+        return f"Workstation('ID:{self.WorkCellID}', 'Power:{self.Power}', 'Load:{self.Load}')"
 
 # only for demo
 class MeasurementsForDemo(db.Model):
@@ -61,7 +62,7 @@ class MeasurementsForDemo(db.Model):
     Fkey = db.Column(db.Integer, db.ForeignKey('workstationinfo.id'),nullable=False)
     #DAQ_ExID = db.Column(db.String(10), db.ForeignKey('WorkstationInfo.DAQ_ExternalID'),nullable=False)
     def __repr__(self):
-        return f"Workstation('{self.WorkCellID}', '{self.Power}', '{self.Load}', '{self.info}')"
+        return f"Workstation('ID:{self.WorkCellID}', 'Power:{self.Power}', 'Load:{self.Load}')"
 
 # Allbesmart---->FASToryEvents
 class FASToryEvents(db.Model):
@@ -73,7 +74,4 @@ class FASToryEvents(db.Model):
     Fkey = db.Column(db.Integer, db.ForeignKey('workstationinfo.id'),nullable=False)
     
     def __repr__(self):
-        return f"Workstation('{self.WorkCellID}'s Events')"
-
-# from FASToryEM.dbModels import WorkstationInfo as W
-# from FASToryEM.dbModels import EnergyMeasurements as E
+        return f"('Events:{self.SenderID}')"

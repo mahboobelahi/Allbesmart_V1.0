@@ -1,8 +1,10 @@
+import csv
 import threading,requests
 from pprint import pprint as P
 from FASToryEvents_EM import UtilityFunctions as helper
 from FASToryEvents_EM import app,db
 from FASToryEvents_EM.dbModels import MeasurementsForDemo,WorkstationInfo,FASToryEvents
+from FASToryEvents_EM.modelSchema import*
 from flask import request,jsonify
 import json,time, datetime
 from FASToryEvents_EM.configurations import *
@@ -144,7 +146,22 @@ def addLineEvent():#external_id,num
 
         return jsonify({"Query Status":error})
 
-
+@app.route('/api/downloadRecord',methods=['GET'])
+def downloadRecord():
+    param =request.args.to_dict()
+    externalId= param.get("externalId")
+    try:
+        result = WorkstationInfo.query.filter_by(WorkCellID=externalId.split('4')[0]).first()
+        
+        if param.get("fileExtension") == 'csv':
+            helper.downloadAsCSV(f"{param.get('fileName')}.csv",result.DM_child)
+        if param.get("fileExtension") == 'json':
+            
+            #print(result.LineEvents[0].serialize)
+            helper.downloadAsJSON(f"{param.get('fileName')}.json",result.LineEvents)
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+    return "ok"
 
 #########################SimulatorData#########################
 

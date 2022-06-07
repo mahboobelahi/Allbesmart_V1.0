@@ -74,17 +74,43 @@ def downloadAsCSV(fileName=None, result=None):
     # if not result:
     #     raise ValueError('No data available')
 
-def downloadAsJSON(fileName=None, result=None):
+def downloadAsJSON(fileName=None, result=None, recordType=None):
     try:
-        temp =[]
-        with open(fileName, 'w') as outfile:
-            for record in result:
-                #print(record.serialize)
-                temp.append(record.serialize)
-            json.dump(temp, outfile)
-            pass
+        if recordType == "events":
+            temp =[]
+            with open(fileName, 'w') as outfile:
+                for record in result.LineEvents:
+                    #print(record.serialize)
+                    temp.append(record.serialize)
+                json.dump(temp, outfile)
+        if recordType == "measurements":
+            temp = {'WorkCellID':result.WorkCellID,'RmsVoltage':[], 'RmsCurrent':[],
+                    'Power':[],'Nominal_Power':[], 'ActiveZones':[], 'Load':[],
+                    'Frequency':[]} #,'timestamp':''
+                    
+            #column names
+            #print(result.DM_child[0].__table__.columns.keys())
+            for record in result.DM_child:
+                temp['RmsVoltage'].append(record.RmsVoltage)
+                temp['RmsCurrent'].append(record.RmsCurrent)
+                temp['Power'].append(record.Power)
+                temp['Nominal_Power'].append(record.Nominal_Power)
+                temp['ActiveZones'].append(record.ActiveZones)
+                temp['Load'].append(record.Load)
+                temp['Frequency'].append(record.line_Frequency)
+                #temp['timestamp'].append('timestamp')
+            with open(fileName, 'w') as outfile:
+                json.dump(temp, outfile)
+
     except IOError as e:
          print ("[X-UTD] :",e)
+
+
+def dump_datetime(value):
+        """Deserialize datetime object into string form for JSON processing."""
+        if value is None:
+            return None
+        return [value.strftime("%Y-%m-%d"), value.strftime("%H:%M:%S")]
 
 #sending events from Simulatorfile
 def simulateData(externalId,measurements,payload,

@@ -4,7 +4,7 @@ from FASToryEvents_EM.configurations import *
 from FASToryEvents_EM.dbModels import EnergyMeasurements, WorkstationInfo,MeasurementsForDemo
 from FASToryEvents_EM import db
 from netifaces import interfaces, ifaddresses, AF_INET
-
+from sqlalchemy.ext.serializer import loads, dumps
 
 #under test
 def reslove_update_IP():
@@ -46,7 +46,7 @@ def get_access_token():
         return (access_token_time,expire_time,DAQ_header)
 
 #download record as csv
-def SQL_queryToCsv(fileName=None, query=None):
+def downloadAsCSV(fileName=None, result=None):
     try:
         
         with open(fileName,'w', newline='') as csvFile:
@@ -58,23 +58,33 @@ def SQL_queryToCsv(fileName=None, query=None):
                     "%BeltTension", "ActiveZones", "LoadCombination", "Load"
                 ]
             )
-            for record in query:
+            for record in result:
                 csvWriter.writerow([
                     record.WorkCellID, record.RmsVoltage, record.RmsCurrent, record.Power,
-                    record.Nominal_Power, record.BeltTension, record.ActiveZones, record.LoadCombination, record.Load
+                    record.Nominal_Power, record.ActiveZones,  record.Load, record.timestamp
                 ])
-
+            #send file as email attachment --record.BeltTension, record.LoadCombination,
             # send_file("./forWorksation10_PR.csv",
             #             mimetype= 'text/csv',
             #             attachment_filename= 'EM_PatternRecognizer.csv',
             #             as_attachment=True
             #)
     except IOError as e:
-         print ("[X-SQL] :",e)
-    # if not query:
+         print ("[X-UTD] :",e)
+    # if not result:
     #     raise ValueError('No data available')
 
-
+def downloadAsJSON(fileName=None, result=None):
+    try:
+        temp =[]
+        with open(fileName, 'w') as outfile:
+            for record in result:
+                #print(record.serialize)
+                temp.append(record.serialize)
+            json.dump(temp, outfile)
+            pass
+    except IOError as e:
+         print ("[X-UTD] :",e)
 
 #sending events from Simulatorfile
 def simulateData(externalId,measurements,payload,

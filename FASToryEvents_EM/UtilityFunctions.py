@@ -5,6 +5,8 @@ from FASToryEvents_EM.dbModels import EnergyMeasurements, WorkstationInfo,Measur
 from FASToryEvents_EM import db
 from netifaces import interfaces, ifaddresses, AF_INET
 
+
+#under test
 def reslove_update_IP():
     for ifaceName in interfaces():
         addresses = [i['addr'] for i in ifaddresses(ifaceName).setdefault(AF_INET, [{'addr':'No IP addr'}] )]
@@ -25,7 +27,7 @@ def createModels():
     db.create_all()
     db.session.commit()
 
-#####accessing JWT token############
+#accessing JWT token
 def get_access_token():
         try:
             response = requests.post(ACCESS_URL, data=payload, headers=headers)
@@ -43,7 +45,38 @@ def get_access_token():
             print("[X-W-Tk] OOps: Something Else", err)
         return (access_token_time,expire_time,DAQ_header)
 
-#####sending events from Simulatorfile############
+#download record as csv
+def SQL_queryToCsv(fileName=None, query=None):
+    try:
+        
+        with open(fileName,'w', newline='') as csvFile:
+            
+            csvWriter = csv.writer(csvFile, delimiter=',')
+            csvWriter.writerow(
+                [
+                    "WorkCellID", "RmsVoltage(V)", "RmsCurrent(A)", "Power(W)", "NominalPower",
+                    "%BeltTension", "ActiveZones", "LoadCombination", "Load"
+                ]
+            )
+            for record in query:
+                csvWriter.writerow([
+                    record.WorkCellID, record.RmsVoltage, record.RmsCurrent, record.Power,
+                    record.Nominal_Power, record.BeltTension, record.ActiveZones, record.LoadCombination, record.Load
+                ])
+
+            # send_file("./forWorksation10_PR.csv",
+            #             mimetype= 'text/csv',
+            #             attachment_filename= 'EM_PatternRecognizer.csv',
+            #             as_attachment=True
+            #)
+    except IOError as e:
+         print ("[X-SQL] :",e)
+    # if not query:
+    #     raise ValueError('No data available')
+
+
+
+#sending events from Simulatorfile
 def simulateData(externalId,measurements,payload,
                         access_token_time,expire_time,headers):     
         try:

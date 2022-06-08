@@ -157,7 +157,7 @@ def getMeasurement():
         for res in result.DM_child[-2:]:
             temp.append(res.getMeasuremnts)
         
-        return jsonify([temp[::-1])
+        return jsonify(temp[::-1])
     except SQLAlchemyError as e:
         error = str(e.__dict__['orig'])
     return jsonify({"code":404})

@@ -146,6 +146,42 @@ def addLineEvent():#external_id,num
 
         return jsonify({"Query Status":error})
 
+@app.route('/api/getMeasurements',methods=['GET'])
+def getMeasurement():
+    param =request.args.to_dict()
+    n = param.get("n")
+    externalId= param.get("externalId").split('4')[0] 
+    try:
+        temp=[]
+        temp1=[]
+        measurements = MeasurementsForDemo.query.filter_by(WorkCellID=externalId).order_by(MeasurementsForDemo.id.desc())[:int(n)]
+        for m in measurements:
+            temp.append(m.getMeasuremnts)
+        result = WorkstationInfo.query.filter_by(WorkCellID=externalId).first()
+        for res in result.DM_child[-2:]:
+            temp1.append(res.getMeasuremnts)
+        
+        return jsonify([temp,temp1[::-1]])
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+    return jsonify({"code":404})
+    
+@app.route('/api/getEvents',methods=['GET'])
+def getEvents():
+
+    param =request.args.to_dict()
+    n = param.get("n")
+    externalId= param.get("externalId").split('4')[0] 
+    temp = []
+    try:
+        result = WorkstationInfo.query.filter_by(WorkCellID=externalId).first()
+        for res in result.LineEvents[-2:]:
+            temp.append(res.serialize)
+        return jsonify(temp[::-1])
+
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+    return jsonify({"code":404})
 
 @app.route('/api/downloadRecord',methods=['GET'])
 def downloadRecord():

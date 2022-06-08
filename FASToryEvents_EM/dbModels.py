@@ -91,3 +91,11 @@ class FASToryEvents(db.Model):
            'Events'  : self.Events,
            'timestamp' : self.dump_datetime(self.timestamp)
        }
+    @property
+    def data(self):
+       """Return object data in easily serializable format"""
+       return [self.id,self.SenderID,self.Events.get('event').get('id'),
+                self.Events.get('event').get('payload').get('palletId'),
+                self.Events.get('event').get('payload').get('recipe'),
+                self.Events.get('event').get('payload').get('color'),
+                self.dump_datetime(self.timestamp)]

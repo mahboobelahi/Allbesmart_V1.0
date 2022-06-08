@@ -46,29 +46,42 @@ def get_access_token():
         return (access_token_time,expire_time,DAQ_header)
 
 #download record as csv
-def downloadAsCSV(fileName=None, result=None):
+def downloadAsCSV(fileName=None, result=None,recordType=None):
     try:
         
-        with open(fileName,'w', newline='') as csvFile:
+        if recordType =="measurements":
+            with open(fileName,'w', newline='') as csvFile:
             
-            csvWriter = csv.writer(csvFile, delimiter=',')
-            csvWriter.writerow(
-                [
-                    "WorkCellID", "RmsVoltage(V)", "RmsCurrent(A)", "Power(W)", "NominalPower",
-                    "%BeltTension", "ActiveZones", "LoadCombination", "Load"
-                ]
-            )
-            for record in result:
-                csvWriter.writerow([
-                    record.WorkCellID, record.RmsVoltage, record.RmsCurrent, record.Power,
-                    record.Nominal_Power, record.ActiveZones,  record.Load, record.timestamp
-                ])
-            #send file as email attachment --record.BeltTension, record.LoadCombination,
-            # send_file("./forWorksation10_PR.csv",
-            #             mimetype= 'text/csv',
-            #             attachment_filename= 'EM_PatternRecognizer.csv',
-            #             as_attachment=True
-            #)
+                csvWriter = csv.writer(csvFile, delimiter=',')
+                csvWriter.writerow(
+                    [
+                        "WorkCellID", "RmsVoltage(V)", "RmsCurrent(A)", "Power(W)", "NominalPower",
+                        "%BeltTension", "ActiveZones", "LoadCombination", "Load"
+                    ]
+                )
+                for record in result.DM_child:
+                    csvWriter.writerow([
+                        record.WorkCellID, record.RmsVoltage, record.RmsCurrent, record.Power,
+                        record.Nominal_Power, record.ActiveZones,  record.Load, record.timestamp
+                    ])
+                #send file as email attachment --record.BeltTension, record.LoadCombination,
+                # send_file("./forWorksation10_PR.csv",
+                #             mimetype= 'text/csv',
+                #             attachment_filename= 'EM_PatternRecognizer.csv',
+                #             as_attachment=True
+                #)
+        if recordType == "events":
+            with open(fileName,'w', newline='') as csvFile:
+            
+                csvWriter = csv.writer(csvFile, delimiter=',')
+                csvWriter.writerow(["WorkCellID", "SenderID", "EventID",
+                                    "PalletID","Recipe","Color", "timestamp"])
+
+                for record in result.LineEvents:
+                    csvWriter.writerow(record.data)
+
+
+
     except IOError as e:
          print ("[X-UTD] :",e)
     # if not result:

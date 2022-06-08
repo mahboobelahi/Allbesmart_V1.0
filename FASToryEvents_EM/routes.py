@@ -153,15 +153,11 @@ def getMeasurement():
     externalId= param.get("externalId").split('4')[0] 
     try:
         temp=[]
-        temp1=[]
-        measurements = MeasurementsForDemo.query.filter_by(WorkCellID=externalId).order_by(MeasurementsForDemo.id.desc())[:int(n)]
-        for m in measurements:
-            temp.append(m.getMeasuremnts)
         result = WorkstationInfo.query.filter_by(WorkCellID=externalId).first()
         for res in result.DM_child[-2:]:
-            temp1.append(res.getMeasuremnts)
+            temp.append(res.getMeasuremnts)
         
-        return jsonify([temp,temp1[::-1]])
+        return jsonify([temp[::-1])
     except SQLAlchemyError as e:
         error = str(e.__dict__['orig'])
     return jsonify({"code":404})

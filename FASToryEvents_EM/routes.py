@@ -146,6 +146,7 @@ def addLineEvent():#external_id,num
 
         return jsonify({"Query Status":error})
 
+
 @app.route('/api/downloadRecord',methods=['GET'])
 def downloadRecord():
     param =request.args.to_dict()
@@ -154,11 +155,11 @@ def downloadRecord():
         result = WorkstationInfo.query.filter_by(WorkCellID=externalId.split('4')[0]).first()
         
         if param.get("fileExtension") == 'csv':
-            helper.downloadAsCSV(f"{param.get('fileName')}.csv",result.DM_child)
+            helper.downloadAsCSV(f"{param.get('fileName')}.csv",result,param.get('recordType'))
         if param.get("fileExtension") == 'json':
             
             #print(result.LineEvents[0].serialize)
-            helper.downloadAsJSON(f"{param.get('fileName')}.json",result.LineEvents)
+            helper.downloadAsJSON(f"{param.get('fileName')}.json",result,param.get('recordType'))
     except SQLAlchemyError as e:
         error = str(e.__dict__['orig'])
     return "ok"

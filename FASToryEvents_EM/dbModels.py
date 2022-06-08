@@ -63,6 +63,21 @@ class MeasurementsForDemo(db.Model):
     #DAQ_ExID = db.Column(db.String(10), db.ForeignKey('WorkstationInfo.DAQ_ExternalID'),nullable=False)
     def __repr__(self):
         return f"Workstation('ID:{self.WorkCellID}', 'Power:{self.Power}', 'Load:{self.Load}')"
+    
+    def dump_datetime(self,value):
+        """Deserialize datetime object into string form for JSON processing."""
+        if value is None:
+            return None
+        return [value.strftime("%Y-%m-%d"), value.strftime("%H:%M:%S")]
+    
+    @property
+    def getMeasuremnts(self):
+       """Return object data in easily serializable format"""
+       return {
+           "current":self.RmsCurrent, "voltage":self.RmsVoltage, "power":self.Power,
+           "NominalPower":self.Nominal_Power,"activeZones":self.ActiveZones, "load":self.Load,
+           "frquency":self.line_Frequency, "timestamp":self.dump_datetime(self.timestamp)
+       }
 
 # Allbesmart---->FASToryEvents
 class FASToryEvents(db.Model):
@@ -88,9 +103,10 @@ class FASToryEvents(db.Model):
            
            'SenderID': self.SenderID,
            # This is an example how to deal with Many2Many relations
-           'Events'  : self.Events,
+           'event'  : self.Events.get("event"),
            'timestamp' : self.dump_datetime(self.timestamp)
        }
+    
     @property
     def data(self):
        """Return object data in easily serializable format"""

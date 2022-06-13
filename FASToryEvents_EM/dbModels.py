@@ -19,9 +19,23 @@ class WorkstationInfo(db.Model):
     EM_child= db.relationship('EnergyMeasurements',backref='WorkstationInfo',lazy=True)#,uselist=False
     DM_child= db.relationship('MeasurementsForDemo',backref='WorkstationInfo',lazy=True)#,uselist=False
     LineEvents= db.relationship('FASToryEvents',backref='RT_Events',lazy=True)#,uselist=False
+    Capabilities= db.Column(db.JSON, nullable=True)
+    Error_Capabilities= db.Column(db.JSON, nullable=True)
+    
+    
     def __repr__(self):
         return f"Workstation('{self.DAQ_ExternalID}')"
-
+    
+    # @property
+    # def serialize(self):
+    #    """Return object data in easily serializable format"""
+    #    return {
+           
+    #        'SenderID': self.SenderID,
+    #        # This is an example how to deal with Many2Many relations
+    #        'event'  : self.Events.get("event"),
+    #        'timestamp' : self.dump_datetime(self.timestamp)
+    #    }
 # only for PR
 class EnergyMeasurements(db.Model):
     __tablename__ = 'energymeasurements'
@@ -45,7 +59,7 @@ class EnergyMeasurements(db.Model):
     #DAQ_ExID = db.Column(db.String(10), db.ForeignKey('WorkstationInfo.DAQ_ExternalID'),nullable=False)
     def __repr__(self):
         return f"Workstation('ID:{self.WorkCellID}', 'Power:{self.Power}', 'Load:{self.Load}')"
-
+    
 # only for demo
 class MeasurementsForDemo(db.Model):
     __tablename__ = 'measurementsfordemo'
@@ -74,7 +88,7 @@ class MeasurementsForDemo(db.Model):
     def getMeasuremnts(self):
        """Return object data in easily serializable format"""
        return {
-           "current":self.RmsCurrent, "voltage":self.RmsVoltage, "power":self.Power,
+           "id":self.id,"current":self.RmsCurrent, "voltage":self.RmsVoltage, "power":self.Power,
            "NominalPower":self.Nominal_Power,"activeZones":self.ActiveZones, "load":self.Load,
            "frquency":self.line_Frequency, "timestamp":self.dump_datetime(self.timestamp)
        }
@@ -110,8 +124,8 @@ class FASToryEvents(db.Model):
     @property
     def data(self):
        """Return object data in easily serializable format"""
-       return [self.id,self.SenderID,self.Events.get('event').get('id'),
+       return [self.SenderID,self.Events.get('event').get('id'),
                 self.Events.get('event').get('payload').get('palletId'),
-                self.Events.get('event').get('payload').get('recipe'),
-                self.Events.get('event').get('payload').get('color'),
+                self.Events.get('event').get('payload').get('Recipe'),
+                self.Events.get('event').get('payload').get('PenColor'),
                 self.dump_datetime(self.timestamp)]

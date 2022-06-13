@@ -1,5 +1,5 @@
 import threading,time,requests,json,socket,csv
-#from FASToryEvents_EM import Workstation as WkS
+from FASToryEvents_EM import FASToryWorkstations as WkS
 from FASToryEvents_EM.configurations import *
 from FASToryEvents_EM.dbModels import EnergyMeasurements, WorkstationInfo,MeasurementsForDemo
 from FASToryEvents_EM import db
@@ -27,6 +27,36 @@ def createModels():
     db.create_all()
     db.session.commit()
 
+#subscription for Orchestrator
+def orchestratorEventsSubUnSub(action='unsubscribe'):
+    try:
+        
+        for cellID in [10]:#WorkStations
+            if action == 'subscribe':
+                for eventID in range(len(ConveyorEvents)):
+                    CNV_RTU_Url_s = f'http://192.168.{str(cellID)}.2/rest/events/{ConveyorEvents[eventID]}/notifs' 
+                    ROB_RTU_Url_s = f'http://192.168.{str(cellID)}.1/rest/events/{RobotEvents[eventID]}/notifs'
+                    # application URl
+                    body = {"destUrl": f'http://{wrkCellLocIP}:{appLocPort}/api/logCellEvents'}              
+                    #print(body)
+                    r = requests.post(CNV_RTU_Url_s, json=body)
+                    print(f'[X-U]:CNV_{cellID} has subscribed:{ConveyorEvents[eventID]} event with request code: {r.status_code}.')
+                    #print(CNV_RTU_Url_s,'\n')
+                    r = requests.post(ROB_RTU_Url_s, json=body)
+                    print(f'[X-U]:Robot_{cellID} has subscribed: {RobotEvents[eventID]} event with request code: {r.status_code}.')        
+                return {f"Workstation_{cellID}_Event_Subscription_Status":200}
+            else:
+                for eventID in range(len(ConveyorEvents)):
+                        CNV_RTU_Url_s = f'http://192.168.{str(cellID)}.2/rest/events/{ConveyorEvents[eventID]}/notifs' 
+                        ROB_RTU_Url_s = f'http://192.168.{str(cellID)}.1/rest/events/{RobotEvents[eventID]}/notifs'            
+                        r = requests.delete(CNV_RTU_Url_s)
+                        r = requests.delete(ROB_RTU_Url_s) 
+                return {f"Workstation_{cellID}_Event_UnSubscription_Status":200}                   
+    except requests.exceptions.RequestException as err:
+        print("[X-E] OOps: Something Else", err)
+        return {f"Workstation_{cellID}_Event_Status":str(err)}
+
+
 #accessing JWT token
 def get_access_token():
         try:
@@ -48,40 +78,29 @@ def get_access_token():
 #download record as csv
 def downloadAsCSV(fileName=None, result=None,recordType=None):
     try:
-        
         if recordType =="measurements":
             with open(fileName,'w', newline='') as csvFile:
             
                 csvWriter = csv.writer(csvFile, delimiter=',')
                 csvWriter.writerow(
                     [
-                        "WorkCellID", "RmsVoltage(V)", "RmsCurrent(A)", "Power(W)", "NominalPower",
-                        "%BeltTension", "ActiveZones", "LoadCombination", "Load"
+                        "WorkCellID", "Frequency(Hz)","RmsVoltage(V)", "RmsCurrent(A)", "Power(W)", "NominalPower",
+                         "ActiveZones", "Load", "Timestamp"
                     ]
                 )
                 for record in result.DM_child:
                     csvWriter.writerow([
-                        record.WorkCellID, record.RmsVoltage, record.RmsCurrent, record.Power,
-                        record.Nominal_Power, record.ActiveZones,  record.Load, record.timestamp
+                        record.WorkCellID, record.line_Frequency,record.RmsVoltage, record.RmsCurrent, record.Power,
+                        record.Nominal_Power,record.ActiveZones,  record.Load, record.timestamp
                     ])
-                #send file as email attachment --record.BeltTension, record.LoadCombination,
-                # send_file("./forWorksation10_PR.csv",
-                #             mimetype= 'text/csv',
-                #             attachment_filename= 'EM_PatternRecognizer.csv',
-                #             as_attachment=True
-                #)
         if recordType == "events":
             with open(fileName,'w', newline='') as csvFile:
             
                 csvWriter = csv.writer(csvFile, delimiter=',')
-                csvWriter.writerow(["WorkCellID", "SenderID", "EventID",
+                csvWriter.writerow([ "SenderID", "EventID",
                                     "PalletID","Recipe","Color", "timestamp"])
-
                 for record in result.LineEvents:
                     csvWriter.writerow(record.data)
-
-
-
     except IOError as e:
          print ("[X-UTD] :",e)
     # if not result:
@@ -97,6 +116,7 @@ def downloadAsJSON(fileName=None, result=None, recordType=None):
                     temp.append(record.serialize)
                 json.dump(temp, outfile)
         if recordType == "measurements":
+            #modify the return data structure by adding get dta property
             temp = {'WorkCellID':result.WorkCellID,'RmsVoltage':[], 'RmsCurrent':[],
                     'Power':[],'Nominal_Power':[], 'ActiveZones':[], 'Load':[],
                     'Frequency':[]} #,'timestamp':''
@@ -159,39 +179,53 @@ def simulateData(externalId,measurements,payload,
                         access_token_time,expire_time,headers)
 
 #workcell obj
-# def Workstations():
+def Workstations():
     
-#     for id in range(1,len(CONFIG.WorkStations)+1):
-#         if id !=10 :# and id!=1:
-#             continue
-#         temp_obj = WkS.Workstation(id,CONFIG.wrkCellLocIP,
-#                                     CONFIG.make[id-1],CONFIG.type[id-1],
-#                                     CONFIG.wrkCellLocPort+id,
-#                                     CONFIG.num_Fast,CONFIG.num)
-#         #temp_obj.WkSINFO()
-#         #deleting past subscription to EM service.
-#         #temp_obj.invoke_EM_service()
-#         #now invoke EM service for accurate results
-#         temp_obj.get_access_token()
-#         # send_measurements=threading.Timer(8,temp_obj.invoke_EM_service,args=("start",))
-#         # send_measurements.daemon=True
-#         # send_measurements.start()
-#         #startring server for workstation
-#         threading.Thread(target=temp_obj.runApp,daemon=True).start()
+    for id in range(1,len(WorkStations)+1):
+        if id !=10 :# and id!=1:
+            continue
+        temp_obj = WkS.Workstation(id,wrkCellLocIP,
+                                    make[id-1],type[id-1],
+                                    wrkCellLocPort+id,numFast=3,num=3)
+        #temp_obj.WkSINFO()
+        #subscribing to conveyor Zone events
+        # for zn in range(1, 5):
+        #     # if zone_name == 5:
+        #     #     continue
+        #     temp_obj.conveyor_events(zone_name=zn,action='subscribe')
         
-#         #wait a while for server initialization
-#         #time.sleep(1)
-#         #check device registration or register device to ZDMP-DAQ component 
-#         #temp_obj.register_device()
+        # #subscribing to robot events
+        # if id ==1 or id == 7:
+        #     pass
+        # else:
+        #     temp_obj.robot_events(event_name='PenChangeEnded',action='subscribe')
+        #     temp_obj.robot_events(event_name='PenChangeStarted',action='subscribe')
+        #     temp_obj.robot_events(event_name='DrawStartExecution',action='subscribe')
+        #     temp_obj.robot_events(event_name='DrawEndExecution',action='subscribe')
+        
+        #deleting past subscription to EM service.
+        #temp_obj.invoke_EM_service()
+        #now invoke EM service for accurate results
+        #temp_obj.get_access_token()
+        # send_measurements=threading.Timer(8,temp_obj.invoke_EM_service,args=("start",))
+        # send_measurements.daemon=True
+        # send_measurements.start()
+        #startring server for workstation
+        threading.Thread(target=temp_obj.runApp,daemon=True).start()
+        
+        #wait a while for server initialization
+        #time.sleep(1)
+        #check device registration or register device to ZDMP-DAQ component 
+        #temp_obj.register_device()
 
-#         #subscribe device for ASYNC data access
-#         temp_obj.sub_or_Unsubscribe_DataSource(True)
+        #subscribe device for ASYNC data access
+        #temp_obj.sub_or_Unsubscribe_DataSource(True)
 
-#         #Db functions
-#         #if you delete DB Schema then call this method. After that comment it.
-#         #temp_obj.callWhenDBdestroyed()
-#         #uncomment following line when base IP got changed
-#         temp_obj.updateIP()
+        #Db functions
+        #if you delete DB Schema then call this method. After that comment it.
+        #temp_obj.callWhenDBdestroyed()
+        #uncomment following line when base IP got changed
+        temp_obj.updateIP()
 
 
 

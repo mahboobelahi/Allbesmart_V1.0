@@ -1,4 +1,4 @@
-import csv
+import csv,string
 import threading,requests
 from pprint import pprint as P
 from FASToryEvents_EM import UtilityFunctions as helper
@@ -127,14 +127,13 @@ def deleteDbModel():
     FASToryEvents.__table__.drop()
     return jsonify({"res":"Model deleted"})
 
-
 @app.route('/api/addLineEvent',methods=['POST'])
 def addLineEvent():#external_id,num
 
     #########incomplete################
     try:
         newEvent = FASToryEvents(
-                    Events= json.dumps(request.json.get('event')),
+                    Events= json.dumps({"event":request.json.get('event')}),
                     SenderID = request.json.get('event').get('senderId'),
                     Fkey = request.json.get('Fkey'))
 
@@ -195,6 +194,73 @@ def downloadRecord():
     except SQLAlchemyError as e:
         error = str(e.__dict__['orig'])
     return "ok"
+
+@app.route('/api/updatCapabilities',methods=['PUT'])
+def updatCapabilities():
+    
+    for result in WorkstationInfo.query.all():
+        result.Capabilities = request.json[result.id-1] 
+        #db.session.add(info)
+    db.session.commit()
+
+    return jsonify({"code":200})
+
+@app.route('/api/updatWorkstationCapability',methods=['PUT'])
+def updatCapability():
+
+    externalId = request.args.to_dict().get("externalId").split('4')[0] 
+    result = WorkstationInfo.query.get(externalId)
+    result.Capabilities = request.json
+    db.session.commit()
+
+    return jsonify({"code":200})
+
+@app.route('/api/orcEventSubscrption',methods=['POST'])
+def orcEventSubscrption():
+    status=helper.orchestratorEventsSubUnSub(action='subscribe')
+    return jsonify(status)
+
+@app.route('/api/orcEventUnSubscrption',methods=['DELETE'])
+def orcEventUnSubscrption():
+    status=helper.orchestratorEventsSubUnSub()
+    return jsonify(status)
+
+@app.route('/api/powerEvents',methods=['POST'])
+def powerEvents():
+    event_body = request.json
+    P(event_body)
+
+@app.route('/api/logCellEvents',methods=['POST'])
+def logCellEvevnts():
+    event_body = request.json
+    #mapping penID to color name
+    if event_body.get("payload").get("PenColor"):
+        event_body["payload"]["PenColor"]= PenColors[event_body.get("payload").get("PenColor")]
+    print(f'[X-Orc] {event_body}')
+    try:
+        newEvent = FASToryEvents(
+                    Events= {"event":event_body},
+                    SenderID = event_body.get('senderID'),
+                    Fkey =  event_body.get('senderID').strip(string.ascii_letters))
+
+        db.session.add(newEvent)
+        db.session.commit()
+        print(f'[X_SQ] Status: {200}')
+        return jsonify({"Query Status":200})
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        print(f'[X_SQL_Err] error')
+        return jsonify({"Query Status":error})
+
+    
+
+
+
+
+
+
+
+
 
 #########################SimulatorData#########################
 

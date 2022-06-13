@@ -10,6 +10,9 @@ energy_meters=[2,3,4,5,6,9,10,11,12]
 FILE_NAME = 'testData.csv'#forWorksation10_PR.csv#testData_349.csv'#'s_Measurements10.csv'
 make = ["Yaskawa","Sony","Kuka","ABB","Omron-Adept","Sony","N/A","Omron-Adept","Sony","Sony","Sony","Sony"]
 type = ["Dual-Arm","SCARA","6-axis","6-axis","6-axis","SCARA","N/A","SCARA-eCobra","SCARA","SCARA","SCARA","SCARA"]
+RobotEvents = ['PenChangeEnded','PenChangeStarted','DrawStartExecution','DrawEndExecution']
+ConveyorEvents = ['Z1_Changed','Z2_Changed','Z3_Changed','Z4_Changed']
+PenColors = {"1":"RED","2":"GREEN","3":"BLUE"}
 #DAQ URLs
 ADMIN_URL = f'http://apigw-zdmp.platform.zdmp.eu/gateway/data-acquisition-admin-service/v0'
 ASYNCH_URL = f'http://apigw-zdmp.platform.zdmp.eu/gateway/data-acquisition-asynch-service/v0'

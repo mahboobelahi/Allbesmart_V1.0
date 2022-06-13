@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import FASToryEvents_EM.configurations as CONFIG
-#from flask_marshmallow import Marshmallow
+from flask_marshmallow import Marshmallow
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
@@ -28,7 +28,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:mahboobelahi93@loc
 app.config['SECRET_KEY'] = "random string"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-#ma = Marshmallow(app)
+ma = Marshmallow(app)
 #to avoid circular imports
+#commment following line when testing with Jupyter notebook
 from FASToryEvents_EM import routes
 

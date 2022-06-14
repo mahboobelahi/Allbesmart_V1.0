@@ -1,6 +1,5 @@
 
 from pprint import pprint as P
-from sre_constants import SUCCESS
 import threading, socket, requests, json, time,datetime
 from flask import  Flask, jsonify,request
 from sqlalchemy import null
@@ -69,55 +68,72 @@ class Workstation:
     # ############################################
     
     
-    def conveyor_events(self, zone_name=None,action=None):
-            """
-            this method subscribe a workstation to the event for all zones of conveyor
-            on that workstation
-
-            :param zone_name:int:zones on convyor
-            :return: nothing
-            """
-
-            # Prepare URL and body for the environment
-            if (self.ID == 1 or self.ID == 7) and zone_name == 4:
-                print(f'WkC_1:_Worksation_{self.ID} has no Service for Zone4')
-                pass
-            else:
-                try:
-                    CNV_RTU_Url_s = f'http://192.168.{str(self.ID)}.2/rest/events/Z{str(zone_name)}_Changed/notifs'
-                    if action == 'subscribe':
-                        # application URl
-                        body = {"destUrl": f'{self.url_self}/events'}
-                        
-                        
-                        r = requests.post(CNV_RTU_Url_s, json=body)
-
-                        
-                        print(f'WkC_3:_{self.get_ID()} has subscribed event for CNV-zone:{zone_name} with request code: {r.status_code}.')
-                        print(CNV_RTU_Url_s,'\n')
-                    else:
-                        r = requests.delete(CNV_RTU_Url_s)
-                except requests.exceptions.RequestException as err:
-                    print("[X-E] OOps: Something Else", err)
-
-
-    def robot_events(self, event_name= None, action=None):
-        """
-        this method subscribe a workstation to the event for all zones of conveyor
-        on that workstation
-
-        :param event_name:string:robot services
-        :return: nothing
-        """
-        ROB_RTU_Url_s = f'http://192.168.{str(self.ID)}.1/rest/events/{event_name}/notifs'
-        if action == 'subscribe':
+    def LineEventsSubscription(self):
+        try:
+            workCell = WorkstationInfo.query.get(self.ID)
             body = {"destUrl": f'{self.url_self}/events'}
-            r = requests.post(ROB_RTU_Url_s, json=body)
-            print(f'[X] WkC:_{self.get_ID()} has subscribed {event_name} event for Robot.\n')     
-        else:
-            r = requests.delete(ROB_RTU_Url_s)
-            print(f'[X] WkC:_{self.get_ID()} has un-subscribed {event_name} event for Robot.\n')
- 
+            if workCell.ComponentStatus[0]:
+                for eventID in CONFIG.RobotEvents:
+                    try:
+                        ROB_RTU_Url_s = f'http://192.168.{str(workCell.id)}.1/rest/events/{eventID}/notifs' 
+                        r = requests.post(ROB_RTU_Url_s, json=body)
+                        print(f'[X-FW]:WorkCell_{workCell.id} has subscribed to {eventID} event with request code: {r.status_code}.')           
+                    except requests.exceptions.RequestException as err:
+                            print("[X-E] OOps: Something Else", err)
+            #conveyor zone event subscription if possible
+            if workCell.ComponentStatus[1]:
+                if workCell.HasZone4:
+                    for eventID in CONFIG.ConveyorEvents:    
+                        try:
+                            CNV_RTU_Url_s = f'http://192.168.{str(workCell.id)}.2/rest/events/{eventID}/notifs' 
+                            r = requests.post(CNV_RTU_Url_s, json=body)
+                            print(f'[X-U]:WorkCell_{workCell.id} has subscribed to {eventID} event with request code: {r.status_code}.')
+                        except requests.exceptions.RequestException as err:
+                            print("[X-E] OOps: Something Else", err)
+                else:
+                    for eventID in CONFIG.ConveyorEvents[:3]:    
+                        try:
+                            CNV_RTU_Url_s = f'http://192.168.{str(workCell.id)}.2/rest/events/{eventID}/notifs' 
+                            r = requests.post(CNV_RTU_Url_s, json=body)
+                            print(f'[X-U]:WorkCell_{workCell.id}has subscribed:{eventID} event with request code: {r.status_code}.')
+                        except requests.exceptions.RequestException as err:
+                            print("[X-E] OOps: Something Else", err) 
+        except SQLAlchemyError as e:
+            error = str(e.__dict__['orig'])
+            print(f'[X_SQL_Err] error') 
+
+    def UnSubscribeToLineEvents(self):
+        try:
+            workCell = WorkstationInfo.query.get(self.ID)
+            if workCell.ComponentStatus[0]:
+                for eventID in CONFIG.RobotEvents:
+                    try:
+                        ROB_RTU_Url_s = f'http://192.168.{str(workCell.id)}.1/rest/events/{eventID}/notifs' 
+                        r = requests.delete(ROB_RTU_Url_s)
+                        print(f'[X-FW]:WorkCell_{workCell.id} has Unsubscribed to {eventID} event with request code: {r.status_code}.')           
+                    except requests.exceptions.RequestException as err:
+                            print("[X-E] OOps: Something Else", err)
+            #conveyor zone event subscription if possible
+            if workCell.ComponentStatus[1]:
+                if workCell.HasZone4:
+                    for eventID in CONFIG.ConveyorEvents:    
+                        try:
+                            CNV_RTU_Url_s = f'http://192.168.{str(workCell.id)}.2/rest/events/{eventID}/notifs' 
+                            r = requests.delete(CNV_RTU_Url_s)
+                            print(f'[X-U]:WorkCell_{workCell.id} has Unsubscribed to {eventID} event with request code: {r.status_code}.')
+                        except requests.exceptions.RequestException as err:
+                            print("[X-E] OOps: Something Else", err)
+                else:
+                    for eventID in CONFIG.ConveyorEvents[:3]:    
+                        try:
+                            CNV_RTU_Url_s = f'http://192.168.{str(workCell.id)}.2/rest/events/{eventID}/notifs' 
+                            r = requests.post(CNV_RTU_Url_s)
+                            print(f'[X-U]:WorkCell_{workCell.id}has Unsubscribed:{eventID} event with request code: {r.status_code}.')
+                        except requests.exceptions.RequestException as err:
+                            print("[X-E] OOps: Something Else", err) 
+        except SQLAlchemyError as e:
+            error = str(e.__dict__['orig'])
+            print(f'[X_SQL_Err] error')
     # auto start/stop energy-measurement service
     def invoke_EM_service(self, cmd='stop'):
         if self.EM == False:
@@ -377,40 +393,18 @@ class Workstation:
             return '<h2>Hello from  Workstation_' + str(self.__ID) + '! Workstation_request.url :=  ' + request.url+'<h2>'
 
 
-        @app.route('/conveyorEventSubscription', methods=['POST'])
-        def conveyorEventSubscription():
-            for zn in range(1, 5):
-                self.conveyor_events(zone_name=zn,action='subscribe')
+        @app.route('/api/LineEventSubscription', methods=['POST'])
+        def LineEventSubscription():
+            
+            self.LineEventsSubscription()
             return "ok"
         
-        @app.route('/conveyorEventUnSubscription', methods=['DELETE'])
-        def conveyorEventUnSubscription():
-            for zn in range(1, 5):
-                self.conveyor_events(zone_name=zn,action='unsubscribe')
+        @app.route('/api/LineEventUnSubscription', methods=['DELETE'])
+        def LineEventUnSubscription():
+            self.UnSubscribeToLineEvents()
             return "ok"      
         
         
-        @app.route('/RobotEventSubscription', methods=['POST'])
-        def RobotEventSubscription():
-            if id ==1 or id == 7:
-                pass
-            else:
-                self.robot_events(event_name='PenChangeEnded',action='subscribe')
-                self.robot_events(event_name='PenChangeStarted',action='subscribe')
-                self.robot_events(event_name='DrawStartExecution',action='subscribe')
-                self.robot_events(event_name='DrawEndExecution',action='subscribe')
-            return "ok"
-        
-        @app.route('/RobotEventUnSubscription', methods=['DELETE'])
-        def RobotEventUnSubscription():
-            if id ==1 or id == 7:
-                pass
-            else:
-                self.robot_events(event_name='PenChangeEnded',action='unsubscribe')
-                self.robot_events(event_name='PenChangeStarted',action='unsubscribe')
-                self.robot_events(event_name='DrawStartExecution',action='unsubscribe')
-                self.robot_events(event_name='DrawEndExecution',action='unsubscribe')
-            return "ok"
 
         # @app.route('/api/powerEvents',methods=['POST'])
         # def powerEvents():

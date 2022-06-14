@@ -2,7 +2,6 @@
 #globals for application
 appLocIP = '0.0.0.0'#'192.168.100.100'
 appLocPort = 2000#change it back to 2000
-WorkStations = [1,2,3,4,5,6,7,8,9,10,11,12] #FASTory Line's workcells
 wrkCellLocIP = '192.168.100.100'
 wrkCellLocPort = 2000
 hav_no_EM = [1,7,8] #  workcells that have no/out of order EM modules

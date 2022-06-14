@@ -127,24 +127,6 @@ def deleteDbModel():
     FASToryEvents.__table__.drop()
     return jsonify({"res":"Model deleted"})
 
-@app.route('/api/addLineEvent',methods=['POST'])
-def addLineEvent():#external_id,num
-
-    #########incomplete################
-    try:
-        newEvent = FASToryEvents(
-                    Events= json.dumps({"event":request.json.get('event')}),
-                    SenderID = request.json.get('event').get('senderId'),
-                    Fkey = request.json.get('Fkey'))
-
-        db.session.add(newEvent)
-        db.session.commit()
-        return jsonify({"Query Status":200})
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-
-        return jsonify({"Query Status":error})
-
 @app.route('/api/getMeasurements',methods=['GET'])
 def getMeasurement():
     param =request.args.to_dict()
@@ -195,15 +177,31 @@ def downloadRecord():
         error = str(e.__dict__['orig'])
     return "ok"
 
+@app.route('/api/updateComponentStatus',methods=['PUT'])
+def componentStatus():
+    
+    if request.args.to_dict("externalId"):
+        result = WorkstationInfo.query.get(request.args.to_dict().get("externalId").split('4')[0])
+        result.ComponentStatus = request.json[componentStatus[result.id-1] ]
+    else:
+        for result in WorkstationInfo.query.all():
+            print(request.json)
+            result.ComponentStatus = request.json[result.id-1] 
+    db.session.commit()
+    return jsonify(SUCCESS=True)
+
 @app.route('/api/updatCapabilities',methods=['PUT'])
 def updatCapabilities():
-    
-    for result in WorkstationInfo.query.all():
-        result.Capabilities = request.json[result.id-1] 
-        #db.session.add(info)
-    db.session.commit()
+    try:
+        for result in WorkstationInfo.query.all():
+            result.Capabilities = request.json[result.id-1] 
+        db.session.commit()
+        return jsonify({"code":200})
 
-    return jsonify({"code":200})
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        print(f'[X_SQL_Err] error')
+        return jsonify({"Query Status":error})
 
 @app.route('/api/updatWorkstationCapability',methods=['PUT'])
 def updatCapability():
@@ -217,12 +215,13 @@ def updatCapability():
 
 @app.route('/api/orcEventSubscrption',methods=['POST'])
 def orcEventSubscrption():
-    status=helper.orchestratorEventsSubUnSub(action='subscribe')
+     
+    status=helper.EventSubscriptions(WorkstationInfo.query.all())
     return jsonify(status)
 
 @app.route('/api/orcEventUnSubscrption',methods=['DELETE'])
 def orcEventUnSubscrption():
-    status=helper.orchestratorEventsSubUnSub()
+    status=helper.EventUnSubscriptions(WorkstationInfo.query.all())
     return jsonify(status)
 
 @app.route('/api/powerEvents',methods=['POST'])
@@ -237,20 +236,21 @@ def logCellEvevnts():
     if event_body.get("payload").get("PenColor"):
         event_body["payload"]["PenColor"]= PenColors[event_body.get("payload").get("PenColor")]
     print(f'[X-Orc] {event_body}')
-    try:
-        newEvent = FASToryEvents(
-                    Events= {"event":event_body},
-                    SenderID = event_body.get('senderID'),
-                    Fkey =  event_body.get('senderID').strip(string.ascii_letters))
+    return "ok"
+    # try:
+    #     newEvent = FASToryEvents(
+    #                 Events= {"event":event_body},
+    #                 SenderID = event_body.get('senderID'),
+    #                 Fkey =  event_body.get('senderID').strip(string.ascii_letters))
 
-        db.session.add(newEvent)
-        db.session.commit()
-        print(f'[X_SQ] Status: {200}')
-        return jsonify({"Query Status":200})
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        print(f'[X_SQL_Err] error')
-        return jsonify({"Query Status":error})
+    #     db.session.add(newEvent)
+    #     db.session.commit()
+    #     print(f'[X_SQ] Status: {200}')
+    #     return jsonify({"Query Status":200})
+    # except SQLAlchemyError as e:
+    #     error = str(e.__dict__['orig'])
+    #     print(f'[X_SQL_Err] error')
+    #    return jsonify({"Query Status":error})
 
     
 

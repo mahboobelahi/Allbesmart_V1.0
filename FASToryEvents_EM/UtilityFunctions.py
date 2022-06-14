@@ -28,34 +28,77 @@ def createModels():
     db.session.commit()
 
 #subscription for Orchestrator
-def orchestratorEventsSubUnSub(action='unsubscribe'):
-    try:
-        
-        for cellID in [10]:#WorkStations
-            if action == 'subscribe':
-                for eventID in range(len(ConveyorEvents)):
-                    CNV_RTU_Url_s = f'http://192.168.{str(cellID)}.2/rest/events/{ConveyorEvents[eventID]}/notifs' 
-                    ROB_RTU_Url_s = f'http://192.168.{str(cellID)}.1/rest/events/{RobotEvents[eventID]}/notifs'
-                    # application URl
-                    body = {"destUrl": f'http://{wrkCellLocIP}:{appLocPort}/api/logCellEvents'}              
-                    #print(body)
-                    r = requests.post(CNV_RTU_Url_s, json=body)
-                    print(f'[X-U]:CNV_{cellID} has subscribed:{ConveyorEvents[eventID]} event with request code: {r.status_code}.')
-                    #print(CNV_RTU_Url_s,'\n')
+def EventSubscriptions(result):
+    body = {"destUrl": f'http://{wrkCellLocIP}:{appLocPort}/api/logCellEvents'}                               
+    for workCell in result:
+        #robot event subscription if possible 
+        if workCell.ComponentStatus[0]:
+            for eventID in RobotEvents:
+                try:
+                    print(f'[X-U]:Robot_{workCell.id}')
+                    ROB_RTU_Url_s = f'http://192.168.{str(workCell.id)}.1/rest/events/{eventID}/notifs'
+                    
                     r = requests.post(ROB_RTU_Url_s, json=body)
-                    print(f'[X-U]:Robot_{cellID} has subscribed: {RobotEvents[eventID]} event with request code: {r.status_code}.')        
-                return {f"Workstation_{cellID}_Event_Subscription_Status":200}
-            else:
-                for eventID in range(len(ConveyorEvents)):
-                        CNV_RTU_Url_s = f'http://192.168.{str(cellID)}.2/rest/events/{ConveyorEvents[eventID]}/notifs' 
-                        ROB_RTU_Url_s = f'http://192.168.{str(cellID)}.1/rest/events/{RobotEvents[eventID]}/notifs'            
-                        r = requests.delete(CNV_RTU_Url_s)
-                        r = requests.delete(ROB_RTU_Url_s) 
-                return {f"Workstation_{cellID}_Event_UnSubscription_Status":200}                   
-    except requests.exceptions.RequestException as err:
-        print("[X-E] OOps: Something Else", err)
-        return {f"Workstation_{cellID}_Event_Status":str(err)}
+                    print(f'[X-U]:Robot_{workCell.id} has subscribed to {eventID} event with request code: {r.status_code}.')           
+                except requests.exceptions.RequestException as err:
+                        print("[X-E] OOps: Something Else", err)
 
+        #conveyor zone event subscription if possible
+        if workCell.ComponentStatus[1]:
+            if workCell.HasZone4:
+                for eventID in ConveyorEvents:    
+                    try:
+                        CNV_RTU_Url_s = f'http://192.168.{str(workCell.id)}.2/rest/events/{eventID}/notifs' 
+                        r = requests.post(CNV_RTU_Url_s, json=body)
+                        print(f'[X-U]:CNV_{workCell.id} has subscribed:{eventID} event with request code: {r.status_code}.')
+                    except requests.exceptions.RequestException as err:
+                        print("[X-E] OOps: Something Else", err)
+            else:
+                for eventID in ConveyorEvents[:3]:    
+                    try:
+                        CNV_RTU_Url_s = f'http://192.168.{str(workCell.id)}.2/rest/events/{eventID}/notifs' 
+                        # application URl
+                        body = {"destUrl": f'http://{wrkCellLocIP}:{appLocPort}/api/logCellEvents'}              
+                        #print(body)
+                        r = requests.post(CNV_RTU_Url_s, json=body)
+                        print(f'[X-U]:CNV_ has subscribed:{eventID} event with request code: {r.status_code}.')
+                    except requests.exceptions.RequestException as err:
+                        print("[X-E] OOps: Something Else", err) 
+
+#Unsubscription for Orchestrator
+def EventUnSubscriptions(result):
+
+    for workCell in result:
+        #robot event Unsubscription if possible 
+        if workCell.ComponentStatus[0]:
+            for eventID in RobotEvents:
+                try:
+                    ROB_RTU_Url_s = f'http://192.168.{str(workCell.id)}.1/rest/events/{eventID}/notifs'
+                    r = requests.delete(ROB_RTU_Url_s)
+                    print(f'[X-U]:Robot_{workCell.id} has Unsubscribed to {eventID} event with request code: {r.status_code}.')           
+                except requests.exceptions.RequestException as err:
+                        print("[X-E] OOps: Something Else", err)
+
+        #conveyor zone event Unsubscription if possible
+        if workCell.ComponentStatus[1]:
+            if workCell.HasZone4:
+                for eventID in ConveyorEvents:    
+                    try:
+                        CNV_RTU_Url_s = f'http://192.168.{str(workCell.id)}.2/rest/events/{eventID}/notifs' 
+                        r = requests.delete(CNV_RTU_Url_s)
+                        print(f'[X-U]:CNV_{workCell.id} has Unsubscribed:{eventID} event with request code: {r.status_code}.')
+                    except requests.exceptions.RequestException as err:
+                        print("[X-E] OOps: Something Else", err)
+            else:
+                for eventID in ConveyorEvents[:3]:    
+                    try:
+                        CNV_RTU_Url_s = f'http://192.168.{str(workCell.id)}.2/rest/events/{eventID}/notifs' 
+                        # application URl
+                        body = {"destUrl": f'http://{wrkCellLocIP}:{appLocPort}/api/logCellEvents'}              
+                        r = requests.delete(CNV_RTU_Url_s)
+                        print(f'[X-U]:CNV_{workCell.id} has Unsubscribed:{eventID} event with request code: {r.status_code}.')
+                    except requests.exceptions.RequestException as err:
+                        print("[X-E] OOps: Something Else", err) 
 
 #accessing JWT token
 def get_access_token():
@@ -181,27 +224,16 @@ def simulateData(externalId,measurements,payload,
 #workcell obj
 def Workstations():
     
-    for id in range(1,len(WorkStations)+1):
-        if id !=10 :# and id!=1:
-            continue
+    for id in range(1,12):
+        # if id !=10 :# and id!=1:
+        #     continue
         temp_obj = WkS.Workstation(id,wrkCellLocIP,
                                     make[id-1],type[id-1],
                                     wrkCellLocPort+id,numFast=3,num=3)
-        #temp_obj.WkSINFO()
+        temp_obj.WkSINFO()
         #subscribing to conveyor Zone events
-        # for zn in range(1, 5):
-        #     # if zone_name == 5:
-        #     #     continue
-        #     temp_obj.conveyor_events(zone_name=zn,action='subscribe')
-        
-        # #subscribing to robot events
-        # if id ==1 or id == 7:
-        #     pass
-        # else:
-        #     temp_obj.robot_events(event_name='PenChangeEnded',action='subscribe')
-        #     temp_obj.robot_events(event_name='PenChangeStarted',action='subscribe')
-        #     temp_obj.robot_events(event_name='DrawStartExecution',action='subscribe')
-        #     temp_obj.robot_events(event_name='DrawEndExecution',action='subscribe')
+        #temp_obj.LineEventsSubscription()
+        #temp_obj.UnSubscribeToLineEvents()
         
         #deleting past subscription to EM service.
         #temp_obj.invoke_EM_service()
@@ -214,7 +246,7 @@ def Workstations():
         threading.Thread(target=temp_obj.runApp,daemon=True).start()
         
         #wait a while for server initialization
-        #time.sleep(1)
+        time.sleep(1)
         #check device registration or register device to ZDMP-DAQ component 
         #temp_obj.register_device()
 
@@ -225,7 +257,7 @@ def Workstations():
         #if you delete DB Schema then call this method. After that comment it.
         #temp_obj.callWhenDBdestroyed()
         #uncomment following line when base IP got changed
-        temp_obj.updateIP()
+        #temp_obj.updateIP()
 
 
 

@@ -18,11 +18,14 @@ if __name__ == '__main__':
     # start_workstations=threading.Thread(target=helper.Workstations)
     # start_workstations.daemon=True
     # start_workstations.start()
-    #helper.createModels()
+    #event subscriptions for orchestrator
+    # orc_subscriptions=threading.Thread(target=helper.EventSubscriptions)
+    # orc_subscriptions.daemon=True
+    # orc_subscriptions.start()
     #time.sleep(5)
     #helper.get_local_ip()
     helper.createModels()
-    app.run(host=helper.get_local_ip(), port=CONFIG.appLocPort,use_reloader=False,debug=True)#,use_reloader=False,debug=True
+    app.run(host='0.0.0.0', port=CONFIG.appLocPort,debug=False)#,use_reloader=False,debug=True
 
 
 

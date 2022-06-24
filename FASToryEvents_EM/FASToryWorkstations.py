@@ -1,5 +1,6 @@
 
 from pprint import pprint as P
+from sre_constants import SUCCESS
 import threading, socket, requests, json, time,datetime
 from flask import  Flask, jsonify,request
 from sqlalchemy import null
@@ -11,6 +12,7 @@ from FASToryEvents_EM  import UtilityFunctions as helper
 from FASToryEvents_EM  import db
 from sqlalchemy.exc import SQLAlchemyError
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import SQLAlchemyError
 
 
 
@@ -43,9 +45,10 @@ class Workstation:
         self.port = wLocPort
         self.EM = True
         # workstaion servies
-        self.measurement_ADD = f'{self.url_self}/measurements'
+        self.measurement_ADD = f'{self.url_self}/api/measurements'
         self.EM_service_url = f'http://192.168.{self.ID}.4/rest/services/send_all_REST'
         self.CNV_start_stop_url = f'http://192.168.{self.ID}.2/rest/services/'
+        self.Robot_service_url = f'http://192.168.{self.ID}.1/rest/services/'
         # for reat-time grphs
         self.powerlist = []
         self.power = 0
@@ -66,13 +69,24 @@ class Workstation:
     # ############################################
     #  FASTory Line Event Subscription Section
     # ############################################
-    
+    def invoke_EM_service(self, cmd='stop'):
+        body={"destUrl" : ""}
+        if self.EM == False:
+            print(f"{self.ID} Has no EM module.")
+            return
+        try:
+            r = requests.post(url=self.EM_service_url, json=body)
+            return f"Status Code: {r.status_code}, Reason: {r.reason}"
+        except requests.exceptions.RequestException as err:
+            print("[X-W] OOps: Something Else", err)
+            return err
     
     def LineEventsSubscription(self):
         try:
             workCell = WorkstationInfo.query.get(self.ID)
             body = {"destUrl": f'{self.url_self}/events'}
             if workCell.ComponentStatus[0]:
+                print(f'[XFW-R_Subscriptions]')
                 for eventID in CONFIG.RobotEvents:
                     try:
                         ROB_RTU_Url_s = f'http://192.168.{str(workCell.id)}.1/rest/events/{eventID}/notifs' 
@@ -82,12 +96,13 @@ class Workstation:
                             print("[X-E] OOps: Something Else", err)
             #conveyor zone event subscription if possible
             if workCell.ComponentStatus[1]:
+                print(f'[XFW-C_Subscriptions]')
                 if workCell.HasZone4:
                     for eventID in CONFIG.ConveyorEvents:    
                         try:
                             CNV_RTU_Url_s = f'http://192.168.{str(workCell.id)}.2/rest/events/{eventID}/notifs' 
                             r = requests.post(CNV_RTU_Url_s, json=body)
-                            print(f'[X-U]:WorkCell_{workCell.id} has subscribed to {eventID} event with request code: {r.status_code}.')
+                            print(f'[XFW]:WorkCell_{workCell.id} has subscribed to {eventID} event with request code: {r.status_code}.')
                         except requests.exceptions.RequestException as err:
                             print("[X-E] OOps: Something Else", err)
                 else:
@@ -95,9 +110,18 @@ class Workstation:
                         try:
                             CNV_RTU_Url_s = f'http://192.168.{str(workCell.id)}.2/rest/events/{eventID}/notifs' 
                             r = requests.post(CNV_RTU_Url_s, json=body)
-                            print(f'[X-U]:WorkCell_{workCell.id}has subscribed:{eventID} event with request code: {r.status_code}.')
+                            print(f'[XFW]:WorkCell_{workCell.id}has subscribed:{eventID} event with request code: {r.status_code}.')
                         except requests.exceptions.RequestException as err:
                             print("[X-E] OOps: Something Else", err) 
+                if workCell.HasEM_Module:
+                    try:
+                        E10_Url = f'http://192.168.{str(workCell.id)}.4/rest/events/send_rest/notifs' 
+                        r = requests.post(E10_Url, json= {"destUrl": f'{self.measurement_ADD}'})
+                        print(f'[XFW]:WorkCell_{workCell.id}has subscribed:Energy event with request code: {r.status_code}.')
+                    except requests.exceptions.RequestException as err:
+                        print("[X-E] OOps: Something Else", err) 
+  
+
         except SQLAlchemyError as e:
             error = str(e.__dict__['orig'])
             print(f'[X_SQL_Err] error') 
@@ -106,15 +130,17 @@ class Workstation:
         try:
             workCell = WorkstationInfo.query.get(self.ID)
             if workCell.ComponentStatus[0]:
+                print(f'[XFW-R_Subscriptions]')
                 for eventID in CONFIG.RobotEvents:
                     try:
                         ROB_RTU_Url_s = f'http://192.168.{str(workCell.id)}.1/rest/events/{eventID}/notifs' 
                         r = requests.delete(ROB_RTU_Url_s)
-                        print(f'[X-FW]:WorkCell_{workCell.id} has Unsubscribed to {eventID} event with request code: {r.status_code}.')           
+                        print(f'[XFW]:WorkCell_{workCell.id} has Unsubscribed to {eventID} event with request code: {r.status_code}.')           
                     except requests.exceptions.RequestException as err:
                             print("[X-E] OOps: Something Else", err)
             #conveyor zone event subscription if possible
             if workCell.ComponentStatus[1]:
+                print(f'[XFW-C_UnSubscriptions]')
                 if workCell.HasZone4:
                     for eventID in CONFIG.ConveyorEvents:    
                         try:
@@ -131,13 +157,23 @@ class Workstation:
                             print(f'[X-U]:WorkCell_{workCell.id}has Unsubscribed:{eventID} event with request code: {r.status_code}.')
                         except requests.exceptions.RequestException as err:
                             print("[X-E] OOps: Something Else", err) 
+
+                if workCell.HasEM_Module:
+                    try:
+                        E10_Url = f'http://192.168.{str(workCell.id)}.4/rest/events/send_rest/notifs' 
+                        r = requests.delete(E10_Url)
+                        #print(f'[XFW]:WorkCell_{workCell.id}has subscribed:{eventID} event with request code: {r.status_code}.')
+                    except requests.exceptions.RequestException as err:
+                        print("[X-E] OOps: Something Else", err) 
+
         except SQLAlchemyError as e:
             error = str(e.__dict__['orig'])
             print(f'[X_SQL_Err] error')
+
     # auto start/stop energy-measurement service
     def invoke_EM_service(self, cmd='stop'):
         if self.EM == False:
-            print("Has no EM module.")
+            print(f"{self.ID} Has no EM module.")
             return
         body = {
             "cmd": cmd,
@@ -145,7 +181,8 @@ class Workstation:
             "ReceiverADDR": 'http://192.168.100.100:2000/noware'  # f'{self.url_self}/noware'
         }
         try:
-            r = requests.post(url=self.EM_service_url, json=body)
+            
+            r = requests.post(url=self.EM_service_url, json={"destUrl": "http://192.168.100.100:2000/api/powerEvents"})
             return f"Status Code: {r.status_code}, Reason: {r.reason}"
         except requests.exceptions.RequestException as err:
             print("[X-W] OOps: Something Else", err)
@@ -248,6 +285,7 @@ class Workstation:
             WorkCellIP=self.url_self,
             EM_service_url=self.EM_service_url,
             CNV_service_url=self.CNV_start_stop_url,
+            Robot_service_url=self.Robot_service_url,
             Capabilities = null,
             Error_Capabilities = null
         )
@@ -390,7 +428,7 @@ class Workstation:
         @app.route('/', methods=['GET'])
         def welcom():
 
-            return '<h2>Hello from  Workstation_' + str(self.__ID) + '! Workstation_request.url :=  ' + request.url+'<h2>'
+            return '<h2>Hello from  Workstation_' + str(self.ID) + '! Workstation_request.url :=  ' + request.url+'<h2>'
 
 
         @app.route('/api/LineEventSubscription', methods=['POST'])
@@ -406,16 +444,81 @@ class Workstation:
         
         
 
-        # @app.route('/api/powerEvents',methods=['POST'])
-        # def powerEvents():
-        #     event_body = request.json
-        #     P(event_body)
+        @app.route('/api/measurements',methods=['POST'])
+        def powerEvents():
+            event_body = request.json
+            if int(time.time() - self.access_token_time) >= (self.expire_time - 50):
+                print(f'[X-SD] Accessing New Token.......')
+                self.get_access_token()
+            # P([        
+            #     event_body.get("CellID"),event_body.get("line_frequency"),event_body.get("rms_current_c"),event_body.get("rms_voltage_c"),
+            #     event_body.get("power_factor_c"),event_body.get("power_factorlow_c"),
+            #     event_body.get("active_power_c"),event_body.get("apparent_power_c"),event_body.get("reactive_power_c"),
+            #     event_body.get("active_energy_c"),event_body.get("reactive_energy_c"),event_body.get("apparent_energy_c")
+            # ])
+            
+            req_A = requests.post(url=f'{CONFIG.SYNCH_URL}/sendMeasurement?externalId={self.external_ID}&fragment=CurrentMeasurement&value={event_body.get("rms_current_c")}&unit=A',       
+                                            headers= self.headers)
+            req_V = requests.post(url=f'{CONFIG.SYNCH_URL}/sendMeasurement?externalId={self.external_ID}&fragment=VoltageMeasurement&value={event_body.get("rms_voltage_c")}&unit=V',   
+                                            headers=self.headers)
+            req_P = requests.post(url=f'{CONFIG.SYNCH_URL}/sendMeasurement?externalId={self.external_ID}&fragment=PowerMeasurement&value={event_body.get("active_power_c")}&unit=W',
+                                            headers=self.headers)
+            print(f'[X-RS] ({req_A.status_code},{req_V.status_code},{req_P.status_code})')
+            return jsonify(SUCCESS=True)
+        
+        @app.route('/api/movePallet', methods=['POST'])
+        def movePallet():
+            
+            return "ok"      
+        
+        @app.route('/api/drawComponent', methods=['POST'])
+        def drawComponent():
+            
+            return "ok"
+        
+        @app.route('/api/changePen/<penColor>', methods=['POST'])
+        def changePen(penColor=None):
+            
+            return "ok"
+
+        @app.route('/api/sendPowerMeasurements', methods=['POST'])
+        def sendPowerMeasurements():
+            
+            return "ok"
+
+        @app.route('/api/stopPowerMeasurements', methods=['POST'])
+        def stopPowerMeasurements():
+            
+            return "ok"
 
         @app.route('/events', methods=['POST'])
         def LineEvents():
 
-            print(f'[X-Wrk]: {request.json}')
+            event_body = request.json
+            print(event_body)
+            if event_body.get("payload").get("PenColor"):
+                event_body["payload"]["PenColor"]= CONFIG.PenColors[event_body.get("payload").get("PenColor")]
+                
+            temp = {"id":event_body.get('id'),
+                    "senderId":event_body.get('senderID'),
+                    "payload":{"recipe":event_body.get('payload').get("Recipe"),
+                    "color":event_body.get('payload').get("PenColor"),
+                    "palletId":event_body.get('payload').get("PalletID")}  }  
+            print(f'[XR-logEvent] {temp}')
+            payload = { 
+                "externalId": self.external_ID,
+                "fragment": "SimulatorEvents"
+                }
+            req_event = requests.post(  url=f'{CONFIG.SYNCH_URL}/sendCustomMeasurement',
+                                                params=payload,headers=self.headers,
+                                                json={"value": temp})
+                    
+            print(f'[X-Wrk]: {req_event.status_code}')
        
             return jsonify(SUCCESS=True)
 
+        
+        
+        
+        
         app.run(host='0.0.0.0', port=self.port)   

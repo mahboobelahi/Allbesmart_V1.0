@@ -12,6 +12,15 @@ type = ["Dual-Arm","SCARA","6-axis","6-axis","6-axis","SCARA","N/A","SCARA-eCobr
 RobotEvents = ['PenChangeEnded','PenChangeStarted','DrawStartExecution','DrawEndExecution']
 ConveyorEvents = ['Z1_Changed','Z2_Changed','Z3_Changed','Z4_Changed']
 PenColors = {"1":"RED","2":"GREEN","3":"BLUE"}
+#availiable commands for Allbesmart
+# command = {
+#             "external_ID":"104EM",
+#             "send_power_measurements": "start",
+#             "move_pallet":"TransZone12",
+#             "change_pen" :"ChangePenRED",
+#             "draw_component":"Draw1"
+#             }
+
 #DAQ URLs
 ADMIN_URL = f'http://apigw-zdmp.platform.zdmp.eu/gateway/data-acquisition-admin-service/v0'
 ASYNCH_URL = f'http://apigw-zdmp.platform.zdmp.eu/gateway/data-acquisition-asynch-service/v0'

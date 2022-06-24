@@ -4,7 +4,6 @@ from pprint import pprint as P
 from FASToryEvents_EM import UtilityFunctions as helper
 from FASToryEvents_EM import app,db
 from FASToryEvents_EM.dbModels import MeasurementsForDemo,WorkstationInfo,FASToryEvents
-from FASToryEvents_EM.modelSchema import*
 from flask import request,jsonify
 import json,time, datetime
 from FASToryEvents_EM.configurations import *
@@ -19,13 +18,12 @@ def handle_connect(client, userdata, flags, rc):
         pass
         result=WorkstationInfo.query.all()
         print("[X-Routes] connected, OK Returned code=",rc)
-        # #subscribe to tpoics
-        time.sleep(1)
+        #subscribe to tpoics
         mqtt.unsubscribe_all()
         # #mqtt.unsubscribe(BASE_TOPIC)
-        # time.sleep(1)
+        time.sleep(1)
         for  res in result:
-            if res.id==10:
+            if res.id==2 or res.id==10:
                 mqtt.subscribe(f'T5_1-Data-Acquisition/DataSource ID: {res.DAQ_ExternalID} - MultiTopic/Measurements/cmd')
                 print(f'[X-Routes] Subscribing to Topic: T5_1-Data-Acquisition/DataSource ID: {res.DAQ_ExternalID} - MultiTopic/Measurements/cmd')
                 print(f'[X-Routes] {res.id}')    
@@ -50,55 +48,22 @@ def handle_disconnect():
 
 #handles commands from MQTT 
 ##command structure#####
+
 # {
-#     "external_ID":"104EM",
-#     "E10_Services": "start",
-#     "CNV":{"cmd":"start","CNV_section":"both"}
+#     "external_ID":"24EM",
+#     "send_power_measurements": "start",
+#     "move_pallet":"TransZone12",
+#     "change_pen" :"ChangePenRED",
+#     "draw_component":"Draw1",
+#     "calibrate_Robot":"calibrate"
 # }
 @mqtt.on_message()
 def handle_mqtt_message(client, userdata, message):
-    try:
-        payload=json.loads(message.payload).get('data')
-        print(f"{type(payload)},'??',{payload}")
-        print(f"[X-Routes] {type(payload)},'??',{payload.get('data')}")
-        #db will handles
-        exID = int(payload.get("external_ID").split('4')[0])
-        result = WorkstationInfo.query.get(exID)
-        E10_url=result.EM_service_url
-        CNV_url = result.CNV_service_url
-        url_self = result.WorkCellIP
-
-        if payload.get("E10_Services") !=None and exID not in hav_no_EM:
-
-            cmd = payload.get("E10_Services")
-            # res=threading.Thread(target=helper.invoke_EM_service,
-            #                             args=(E10_url,cmd),
-            #                             daemon=True).start()
-            # print('[X-Routes] ',res)
-            ######For Simulation#########
-            # if cmd == 'stop':
-            #     requests.post(url=f'{result.WorkCellIP}/api/stop_simulations',timeout=60)
-            # else:
-            #     requests.post(url=f'{result.WorkCellIP}/api/start_simulations',timeout=60)
-            #############################
-        else:
-            print(f'[X-Routes] Invalid Command!')
-
-        if payload.get("CNV")!=None:
-            if payload.get("CNV").get("cmd") !=None:
-                cnv_cmd = payload.get("CNV").get("cmd")
-                cnv_section = payload.get("CNV").get("CNV_section").lower()
-                if exID in [7,1] and (cnv_section == 'bypass' or cnv_section == 'both'):
-                    print(f'[X-Routes] Invalid Command! ')
-                else:
-                    
-                    res= threading.Thread(target=helper.cnv_cmd,
-                                                args=((cnv_cmd,cnv_section,CNV_url,url_self)),
-                                                daemon=True).start()
-                    print('[X-Routes] ',res)
-                
-    except ValueError:
-        print('[X-Routes] Decoding JSON has failed')
+    
+    executeCommand=threading.Thread(target=helper.parseCommand, args=(message,))
+    executeCommand.daemon=True
+    executeCommand.start()
+    
 
 ########Flask Application Endpoints################
 
@@ -227,30 +192,35 @@ def orcEventUnSubscrption():
 @app.route('/api/powerEvents',methods=['POST'])
 def powerEvents():
     event_body = request.json
-    P(event_body)
-
+    print('[X]',[ event_body.get("CellID"),event_body.get("line_frequency"),
+            event_body.get("rms_current_c"),event_body.get("rms_voltage_c"),
+            event_body.get("power_factor_c"),event_body.get("power_factorlow_c"),
+            event_body.get("active_power_c"),event_body.get("apparent_power_c"),event_body.get("reactive_power_c"),
+            event_body.get("active_energy_c"),event_body.get("reactive_energy_c"),event_body.get("apparent_energy_c")])
+    return "ok"
+    
 @app.route('/api/logCellEvents',methods=['POST'])
 def logCellEvevnts():
     event_body = request.json
     #mapping penID to color name
     if event_body.get("payload").get("PenColor"):
         event_body["payload"]["PenColor"]= PenColors[event_body.get("payload").get("PenColor")]
-    print(f'[X-Orc] {event_body}')
-    return "ok"
-    # try:
-    #     newEvent = FASToryEvents(
-    #                 Events= {"event":event_body},
-    #                 SenderID = event_body.get('senderID'),
-    #                 Fkey =  event_body.get('senderID').strip(string.ascii_letters))
+    print(f'[XR-logEvent] {event_body}')
+    # return "ok"
+    try:
+        newEvent = FASToryEvents(
+                    Events= {"event":event_body},
+                    SenderID = event_body.get('senderID'),
+                    Fkey =  event_body.get('senderID').strip(string.ascii_letters))
 
-    #     db.session.add(newEvent)
-    #     db.session.commit()
-    #     print(f'[X_SQ] Status: {200}')
-    #     return jsonify({"Query Status":200})
-    # except SQLAlchemyError as e:
-    #     error = str(e.__dict__['orig'])
-    #     print(f'[X_SQL_Err] error')
-    #    return jsonify({"Query Status":error})
+        db.session.add(newEvent)
+        db.session.commit()
+        print(f'[X_SQ] Status: {200}')
+        return jsonify({"Query Status":200})
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        print(f'[X_SQL_Err] error')
+        return jsonify({"Query Status":error})
 
     
 

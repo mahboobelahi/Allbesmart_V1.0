@@ -16,11 +16,12 @@ class WorkstationInfo(db.Model):
     #WorkCellPort = db.Column(db.Integer)
     EM_service_url = db.Column(db.String(255), unique=True, nullable=False)
     CNV_service_url = db.Column(db.String(255), unique=True, nullable=False)
+    Robot_service_url = db.Column(db.String(255), unique=True, nullable=True)
     EM_child= db.relationship('EnergyMeasurements',backref='WorkstationInfo',lazy=True)#,uselist=False
     DM_child= db.relationship('MeasurementsForDemo',backref='WorkstationInfo',lazy=True)#,uselist=False
     LineEvents= db.relationship('FASToryEvents',backref='RT_Events',lazy=True)#,uselist=False
     Capabilities= db.Column(db.JSON, nullable=True)
-    Error_Capabilities= db.Column(db.JSON, nullable=True)
+    ComponentStatus= db.Column(db.JSON, nullable=True)
     
     
     def __repr__(self):
@@ -36,7 +37,8 @@ class WorkstationInfo(db.Model):
     #        'event'  : self.Events.get("event"),
     #        'timestamp' : self.dump_datetime(self.timestamp)
     #    }
-# only for PR
+
+# only for data collection for Pattern Recognizer
 class EnergyMeasurements(db.Model):
     __tablename__ = 'energymeasurements'
     id = db.Column(db.Integer, primary_key=True)
